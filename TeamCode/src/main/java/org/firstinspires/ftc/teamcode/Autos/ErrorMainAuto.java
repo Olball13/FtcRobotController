@@ -1,0 +1,355 @@
+package org.firstinspires.ftc.teamcode.Autos;
+
+import static org.firstinspires.ftc.teamcode.Mechanisms.PedroAutoFollower.blue_Long_Start;
+import static org.firstinspires.ftc.teamcode.Mechanisms.PedroAutoFollower.blue_Short_Start;
+import static org.firstinspires.ftc.teamcode.Mechanisms.PedroAutoFollower.follower;
+import static org.firstinspires.ftc.teamcode.Mechanisms.PedroAutoFollower.go_Blue_Lane_1_Pickup;
+import static org.firstinspires.ftc.teamcode.Mechanisms.PedroAutoFollower.go_Blue_Lane_1_Start;
+import static org.firstinspires.ftc.teamcode.Mechanisms.PedroAutoFollower.go_Blue_Lane_2_Pickup;
+import static org.firstinspires.ftc.teamcode.Mechanisms.PedroAutoFollower.go_Blue_Lane_2_Start;
+import static org.firstinspires.ftc.teamcode.Mechanisms.PedroAutoFollower.go_Blue_Lane_3_Pickup;
+import static org.firstinspires.ftc.teamcode.Mechanisms.PedroAutoFollower.go_Blue_Lane_3_Start;
+import static org.firstinspires.ftc.teamcode.Mechanisms.PedroAutoFollower.go_Blue_Long_End;
+import static org.firstinspires.ftc.teamcode.Mechanisms.PedroAutoFollower.go_Blue_Long_Shoot;
+import static org.firstinspires.ftc.teamcode.Mechanisms.PedroAutoFollower.go_Blue_Short_Shoot_1;
+import static org.firstinspires.ftc.teamcode.Mechanisms.PedroAutoFollower.go_Blue_Short_Shoot_2;
+import static org.firstinspires.ftc.teamcode.Mechanisms.PedroAutoFollower.go_Red_Lane_1_Pickup;
+import static org.firstinspires.ftc.teamcode.Mechanisms.PedroAutoFollower.go_Red_Lane_1_Start;
+import static org.firstinspires.ftc.teamcode.Mechanisms.PedroAutoFollower.go_Red_Lane_2_Pickup;
+import static org.firstinspires.ftc.teamcode.Mechanisms.PedroAutoFollower.go_Red_Lane_2_Start;
+import static org.firstinspires.ftc.teamcode.Mechanisms.PedroAutoFollower.go_Red_Lane_3_Pickup;
+import static org.firstinspires.ftc.teamcode.Mechanisms.PedroAutoFollower.go_Red_Lane_3_Start;
+import static org.firstinspires.ftc.teamcode.Mechanisms.PedroAutoFollower.go_Red_Long_End;
+import static org.firstinspires.ftc.teamcode.Mechanisms.PedroAutoFollower.go_Red_Long_Shoot;
+import static org.firstinspires.ftc.teamcode.Mechanisms.PedroAutoFollower.go_Red_Short_Shoot_1;
+import static org.firstinspires.ftc.teamcode.Mechanisms.PedroAutoFollower.go_Red_Short_Shoot_2;
+import static org.firstinspires.ftc.teamcode.Mechanisms.PedroAutoFollower.red_Long_Start;
+import static org.firstinspires.ftc.teamcode.Mechanisms.PedroAutoFollower.red_Short_Start;
+
+import com.bylazar.telemetry.PanelsTelemetry;
+import com.bylazar.telemetry.TelemetryManager;
+import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.eventloop.opmode.OpMode;
+import com.qualcomm.robotcore.util.ElapsedTime;
+
+import org.firstinspires.ftc.teamcode.Mechanisms.BlackboardKeys;
+import org.firstinspires.ftc.teamcode.Mechanisms.PedroAutoFollower;
+import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
+import org.firstinspires.ftc.teamcode.pedroPathing.MapDrawer;
+
+@Autonomous
+public class ErrorMainAuto extends OpMode {
+    // Info for how to run auto
+    private TelemetryManager telemetryM;
+    private static boolean use_Lane = false;
+    private static String alliance_Colour = "Blue", start_From = "Short", drive_Type = "Field Oriented";
+    private static final float general_Shoot_Time = 5;
+
+    /**
+     * Variable for selection placement in the interface before start
+     */
+    private int interface_selection = 1;
+    private int path_State = 0;
+    ElapsedTime autoTime = new ElapsedTime();
+    ElapsedTime pathTime = new ElapsedTime();
+    @Override
+    public void init() {
+        follower = Constants.createFollower(hardwareMap);
+        telemetryM = PanelsTelemetry.INSTANCE.getTelemetry();
+        PedroAutoFollower.buildPaths();
+    }
+
+    public void init_loop() {
+        auto_Select_Update();
+    }
+    public void start() {
+        autoTime.reset();
+        BlackboardKeys.ALLIANCE_KEY = alliance_Colour;
+        BlackboardKeys.DRIVETYPE_KEY = drive_Type;
+    }
+
+    @Override
+    public void loop() {
+        MapDrawer.drawDebug(follower);
+        telemetryM.update();
+        telemetryM.debug("position", follower.getPose());
+        telemetryM.debug("velocity", follower.getVelocity());
+        follower.update();
+        auto_Update();
+    }
+    /**
+     * This updates the telemetry interface and values to be selected for running a personalized auto
+     */
+    private void auto_Select_Update() {
+        telemetry.clearAll();
+        switch (interface_selection) {
+            case 1:
+                if (gamepad1.leftBumperWasPressed()) {
+                    if (alliance_Colour.equals("Blue")) {
+                        alliance_Colour = "Red";
+                        if (start_From.equals("Short")) {
+                            follower.setStartingPose(red_Short_Start);
+                        } else {
+                            follower.setStartingPose(red_Long_Start);
+                        }
+                    } else {
+                        alliance_Colour = "Blue";
+                        if (start_From.equals("Short")) {
+                            follower.setStartingPose(blue_Short_Start);
+                        } else {
+                            follower.setStartingPose(blue_Long_Start);
+                        }
+                    }
+                }
+                telemetry.addData("Alliance>", alliance_Colour);
+                telemetry.addData("Starting Position", start_From);
+                telemetry.addData("Use Intake?", use_Lane);
+                telemetry.addData("Drive Type", drive_Type);
+
+                break;
+            case 2:
+                if (gamepad1.leftBumperWasPressed()) {
+                    if (start_From.equals("Short")) {
+                        start_From = "Long";
+                        if (alliance_Colour.equals("Blue")) {
+                            follower.setStartingPose(blue_Long_Start);
+                        } else {
+                            follower.setStartingPose(red_Long_Start);
+                        }
+                    } else {
+                        start_From = "Short";
+                        if (alliance_Colour.equals("Blue")) {
+                            follower.setStartingPose(blue_Short_Start);
+                        } else {
+                            follower.setStartingPose(red_Short_Start);
+                        }
+                    }
+                }
+                telemetry.addData("Alliance", alliance_Colour);
+                telemetry.addData("Starting Position>", start_From);
+                telemetry.addData("Use Intake?", use_Lane);
+                telemetry.addData("Drive Type", drive_Type);
+
+                break;
+            case 3:
+                if (gamepad1.leftBumperWasPressed()) {
+                    use_Lane = !use_Lane;
+                }
+                telemetry.addData("Alliance", alliance_Colour);
+                telemetry.addData("Starting Position", start_From);
+                telemetry.addData("Use Intake?>", use_Lane);
+                telemetry.addData("Drive Type", drive_Type);
+
+                break;
+            case 4:
+                if (gamepad1.leftBumperWasPressed()) {
+                    if (drive_Type.equals("Field Oriented")) {
+                        drive_Type = "Robot Oriented";
+                    } else {
+                        drive_Type = "Field Oriented";
+                    }
+                }
+                telemetry.addData("Alliance", alliance_Colour);
+                telemetry.addData("Starting Position", start_From);
+                telemetry.addData("Use Intake?", use_Lane);
+                telemetry.addData("Drive Type>", drive_Type);
+                break;
+        }
+
+        if (gamepad1.dpadUpWasPressed()) {
+            interface_selection -= 1;
+        }
+        if (gamepad1.dpadDownWasPressed()) {
+            interface_selection += 1;
+        }
+        if (interface_selection < 1) {
+            interface_selection = 4;
+        }
+        if (interface_selection > 4) {
+            interface_selection = 1;
+        }
+    }
+
+    private void auto_Update() {
+        switch (path_State) {
+            case 0:
+                if (use_Lane){
+                    if (alliance_Colour.equals("Blue")) {
+                        if (start_From.equals("Short")) {
+                            follower.followPath(go_Blue_Short_Shoot_1);
+                        } else {
+                            follower.followPath(go_Blue_Long_Shoot);
+                        }
+                    } else {
+                        if (start_From.equals("Short")) {
+                            follower.followPath(go_Red_Short_Shoot_1);
+                        } else {
+                            follower.followPath(go_Red_Long_Shoot);
+                        }
+                    }
+                } else {
+                    if (alliance_Colour.equals("Blue")) {
+                        if (start_From.equals("Short")) {
+                            follower.followPath(go_Blue_Short_Shoot_2);
+                        } else {
+                            follower.followPath(go_Blue_Long_Shoot);
+                        }
+                    } else {
+                        if (start_From.equals("Short")) {
+                            follower.followPath(go_Red_Short_Shoot_2);
+                        } else {
+                            follower.followPath(go_Red_Long_Shoot);
+                        }
+                    }
+                }
+                path_Rest();
+                break;
+            case 1:
+                if (follower.isBusy()) {
+                 telemetry.addLine("Winding up Flywheel with range correction");
+                 pathTime.reset();
+                } else if (pathTime.seconds() < general_Shoot_Time) {
+                    telemetry.addLine("Shooting with range correction");
+                } else {
+                    telemetry.addLine("Stopping Flywheel");
+                    if (use_Lane){
+                        telemetry.addLine("Intake On");
+                        if (alliance_Colour.equals("Blue")) {
+                            if (start_From.equals("Short")) {
+                                follower.followPath(go_Blue_Lane_1_Start);
+                            } else {
+                                follower.followPath(go_Blue_Lane_3_Start);
+                            }
+                        } else {
+                            if (start_From.equals("Short")) {
+                                follower.followPath(go_Red_Lane_1_Start);
+                            } else {
+                                follower.followPath(go_Red_Lane_3_Start);
+                            }
+                        }
+                    } else {
+                        if (alliance_Colour.equals("Blue")) {
+                            if (start_From.equals("Short")) {
+                                telemetry.addLine("Auto Finished");
+                                return;
+                            } else {
+                                follower.followPath(go_Blue_Long_End);
+                            }
+                        } else {
+                            if (start_From.equals("Short")) {
+                                telemetry.addLine("Auto Finished");
+                                return;
+                            } else {
+                                follower.followPath(go_Red_Long_End);
+                            }
+                        }
+                    }
+                    path_Rest();
+                }
+                break;
+            case 2:
+                if (!follower.isBusy()) {
+                    if (use_Lane){
+                        if (alliance_Colour.equals("Blue")) {
+                            if (start_From.equals("Short")) {
+                                follower.followPath(go_Blue_Lane_1_Pickup);
+                            } else {
+                                follower.followPath(go_Blue_Lane_3_Pickup);
+                            }
+                        } else {
+                            if (start_From.equals("Short")) {
+                                follower.followPath(go_Red_Lane_1_Pickup);
+                            } else {
+                                follower.followPath(go_Red_Lane_3_Pickup);
+                            }
+                        }
+                    } else {
+                        telemetry.addLine("Auto Finished");
+                        return;
+                    }
+                    path_Rest();
+                }
+                break;
+            case 3:
+                if (!follower.isBusy()) {
+                    telemetry.addLine("Intake Off"); //Should it be off or will it keep the last artifact in?
+                    if (alliance_Colour.equals("Blue")) {
+                        if (start_From.equals("Short")) {
+                            follower.followPath(go_Blue_Short_Shoot_1);
+                        } else {
+                            follower.followPath(go_Blue_Long_Shoot);
+                        }
+                    } else {
+                        if (start_From.equals("Short")) {
+                            follower.followPath(go_Red_Short_Shoot_1);
+                        } else {
+                            follower.followPath(go_Red_Long_Shoot);
+                        }
+                    }
+                    path_Rest();
+                }
+                break;
+            case 4:
+                if (follower.isBusy()) {
+                    telemetry.addLine("Winding up Flywheel with range correction");
+                    pathTime.reset();
+                } else if (pathTime.seconds() < general_Shoot_Time) {
+                    telemetry.addLine("Shooting with range correction");
+                } else {
+                    if (alliance_Colour.equals("Blue")) {
+                        if (start_From.equals("Short")) {
+                            follower.followPath(go_Blue_Lane_2_Start);
+                        } else {
+                            telemetry.addLine("Blue Long Shoot to Lazy Generation?");
+                            return;
+                        }
+                    } else {
+                        if (start_From.equals("Short")) {
+                            follower.followPath(go_Red_Lane_2_Start);
+                        } else {
+                            telemetry.addLine("Red Long Shoot to Lazy Path Generation?");
+                            return;
+
+                        }
+                    }
+                }
+                path_Rest();
+                break;
+            case 5:
+                telemetry.addLine("Intake Off"); //If it is not switched off before
+                if (!follower.isBusy()) {
+                    telemetry.addLine("Intake On");
+                    if (alliance_Colour.equals("Blue")) {
+                        follower.followPath(go_Blue_Lane_2_Pickup);
+                    } else {
+                        follower.followPath(go_Red_Lane_2_Pickup);
+                    }
+                    path_Rest();
+                }
+                break;
+            case 6:
+                if (!follower.isBusy()) {
+                    if (alliance_Colour.equals("Blue")) {
+                        follower.followPath(go_Blue_Short_Shoot_2);
+                    } else {
+                        follower.followPath(go_Red_Short_Shoot_2);
+                    }
+                    path_Rest();
+                }
+                break;
+            case 7:
+                if (follower.isBusy()) {
+                    telemetry.addLine("Winding up Flywheel with range correction");
+                    pathTime.reset();
+                } else if (pathTime.seconds() < general_Shoot_Time) {
+                    telemetry.addLine("Shooting with range correction");
+                } else {
+                    telemetry.addLine("Auto Finished");
+                }
+         }
+    }
+    private void path_Rest() {
+        pathTime.reset();
+        path_State += 1;
+    }
+}
